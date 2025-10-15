@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Mixel - Free music mixer</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background-color: #f0f0f0;
+    }
+    button {
+      margin: 5px;
+      padding: 10px 15px;
+      font-size: 16px;
+    }
+    input {
+      padding: 5px;
+      width: 300px;
+    }
+    audio {
+      display: block;
+      margin: 10px 0;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <h1>Mixel - Mix music</h1>
+
+  <h2>Play Music from URLs</h2>
+  <input type="text" id="audioURL" placeholder="Enter audio URL">
+  <button id="addTrackButton">Add Track</button>
+
+  <div id="tracks"></div>
+
+  <h2>Record Audio</h2>
+  <button id="recordButton">Start Recording</button>
+  <button id="stopButton">Stop Recording</button>
+  <audio id="recordedAudio" controls></audio>
+
+  <!-- Audio Recorder Polyfill -->
+  <script src="https://cdn.jsdelivr.net/npm/audio-recorder-polyfill@0.4.1/mpeg-encoder/index.min.js"></script>
+
+  <script>
+    // --- Music Mixing ---
+    const addTrackButton = document.getElementById('addTrackButton');
+    const audioURLInput = document.getElementById('audioURL');
+    const tracksContainer = document.getElementById('tracks');
+
+    addTrackButton.addEventListener('click', () => {
+      const url = audioURLInput.value.trim();
+      if (!url) return;
+
+      const audio = document.createElement('audio');
+      audio.src = url;
+      audio.controls = true;
+      audio.crossOrigin = "anonymous"; // To prevent CORS issues
+
+      const playButton = document.createElement('button');
+      playButton.textContent = 'Play';
+      playButton.addEventListener('click', () => audio.play());
+
+      const trackDiv = document.createElement('div');
+      trackDiv.appendChild(audio);
+      trackDiv.appendChild(playButton);
+
+      tracksContainer.appendChild(trackDiv);
+      audioURLInput.value = '';
+    });
+
+    // --- Audio Recording ---
+    const recordButton = document.getElementById('recordButton');
+    const stopButton = document.getElementById('stopButton');
+    const recordedAudio = document.getElementById('recordedAudio');
+
+    let recorder;
+
+    recordButton.addEventListener('click', () => {
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+        // Use polyfill if MediaRecorder doesn't support 'audio/mpeg'
+        try {
+          recorder = new MediaRecorder(stream, { mimeType: 'audio/mpeg' });
+        } catch (e) {
+          recorder = new MediaRecorder(stream);
+        }
+
+        recorder.addEventListener('dataavailable', e => {
+          recordedAudio.src = URL.createObjectURL(e.data);
+        });
+
+        recorder.start();
+        recordButton.disabled = true;
+        stopButton.disabled = false;
+      }).catch(err => {
+        alert('Microphone access denied or unavailable.');
+        console.error(err);
+      });
+    });
+
+    stopButton.addEventListener('click', () => {
+      if (recorder) {
+        recorder.stop();
+        recorder.stream.getTracks().forEach(track => track.stop());
+        recordButton.disabled = false;
+        stopButton.disabled = true;
+      }
+    });
+  </script>
+</body>
+</html>
